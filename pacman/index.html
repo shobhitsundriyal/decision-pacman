@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pac-Man</title>
+<style>
+  body {
+    margin: 0;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: monospace;
+    color: #fff;
+  }
+  h1 { color: #ffe600; letter-spacing: 4px; margin: 8px 0; }
+  #hud { display: flex; gap: 40px; font-size: 18px; margin-bottom: 6px; align-items: center; }
+  #hud select {
+    background: #111; color: #ffe600; border: 1px solid #444;
+    font-family: monospace; font-size: 15px; padding: 2px 6px;
+  }
+  canvas { background: #000; }
+  #msg { font-size: 18px; margin-top: 8px; color: #ffe600; min-height: 24px; }
+  #ai {
+    margin-top: 10px; display: flex; gap: 8px; align-items: center;
+    font-size: 13px;
+  }
+  #ai input[type=password] {
+    background: #111; color: #fff; border: 1px solid #444;
+    padding: 4px 8px; font-family: monospace; width: 260px;
+  }
+  #ai button {
+    background: #2121de; color: #fff; border: 0; padding: 5px 12px;
+    font-family: monospace; cursor: pointer;
+  }
+  #aiStatus { font-size: 12px; color: #0f0; min-width: 120px; }
+  #aiStatus.err { color: #f55; }
+  #buildInfo { font-size: 11px; color: #666; margin-top: 4px; }
+  #cards { display: flex; gap: 16px; margin-top: 10px; }
+  .card {
+    border: 1px solid #333; border-radius: 8px; padding: 8px 14px;
+    min-width: 170px; font-size: 13px;
+  }
+  .card h3 { margin: 0 0 6px 0; font-size: 14px; color: #fff; }
+  .card .mode {
+    font-size: 10px; padding: 1px 6px; border-radius: 4px;
+    background: #0a5c0a; color: #0f0; margin-left: 6px; vertical-align: middle;
+  }
+  .card .mode.off { background: #555; color: #999; }
+  .crow { display: flex; align-items: center; gap: 8px; margin: 4px 0; color: #ccc; }
+  .avatar { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+  .arrow { font-size: 16px; color: #ffe600; min-width: 18px; text-align: center; }
+  .card.disabled .crow, .card.disabled .arrow { opacity: 0.25; }
+  .card.disabled h3 .mode { background: #333; color: #666; }
+  .aiToggle { display: block; margin-top: 8px; cursor: pointer; user-select: none; color: #ccc; }
+  .aiToggle input { cursor: pointer; }
+  .provRow { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 12px; color: #ccc; }
+  .provRow label { cursor: pointer; user-select: none; }
+  .provRow input[type=radio] { cursor: pointer; accent-color: #ffe600; }
+  .provLbl { color: #888; }
+  #newGameBtn {
+    background: #2121de; color: #fff; border: 0; padding: 4px 14px;
+    font-family: monospace; font-size: 15px; cursor: pointer; border-radius: 4px;
+  }
+  #newGameBtn:hover { background: #3030f0; }
+  #speedCtl { font-size: 15px; display: flex; align-items: center; gap: 6px; }
+  #speedSlider { width: 110px; accent-color: #ffe600; cursor: pointer; }
+  #speedVal { color: #ffe600; min-width: 34px; }
+</style>
+</head>
+<body>
+  <h1>PAC-MAN</h1>
+  <div id="hud">
+    <span>Score: <span id="score">0</span></span>
+    <span>Lives: <span id="lives">3</span></span>
+    <label>Maze:
+      <select id="mazeSelect">
+        <option value="classic" selected>Classic</option>
+        <option value="plaza">Plaza</option>
+        <option value="labyrinth">Labyrinth</option>
+      </select>
+    </label>
+    <button id="newGameBtn">New Game</button>
+    <label id="speedCtl">Speed:
+      <input type="range" id="speedSlider" min="0.25" max="2" step="0.25" value="1">
+      <span id="speedVal">1x</span>
+    </label>
+  </div>
+  <canvas id="game" width="448" height="496"></canvas>
+  <div id="msg">Press an arrow key to start</div>
+  <div id="buildInfo"></div>
+  <div id="cards">
+    <div class="card" id="ghostCard">
+      <h3>👻 Ghosts Brain <span class="mode off" id="ghostMode">HEURISTIC</span></h3>
+      <div class="crow"><span class="avatar" style="background:#ff0000"></span> blinky <span class="arrow" id="ar-blinky">·</span></div>
+      <div class="crow"><span class="avatar" style="background:#ffc0cb"></span> pinky&nbsp; <span class="arrow" id="ar-pinky">·</span></div>
+      <div class="crow"><span class="avatar" style="background:#00ffff"></span> inky&nbsp;&nbsp; <span class="arrow" id="ar-inky">·</span></div>
+      <div class="crow"><span class="avatar" style="background:#ffa500"></span> clyde&nbsp;<span class="arrow" id="ar-clyde">·</span></div>
+      <div class="provRow">
+        <span class="provLbl">AI:</span>
+        <label><input type="radio" name="ghostProvider" id="gp-openai" checked> OpenAI</label>
+        <label><input type="radio" name="ghostProvider" id="gp-jev"> Jev</label>
+      </div>
+      <label class="aiToggle"><input type="checkbox" id="heuristicOnly" checked> Heuristic ghosts only</label>
+    </div>
+    <div class="card" id="pacCard">
+      <h3>🟡 Jacman Brain <span class="mode" id="pacMode">PLAYER</span></h3>
+      <div id="pacBrain">
+        <div class="crow"><span class="avatar" style="background:#ffe600"></span> pacman <span class="arrow" id="ar-pacman">·</span></div>
+      </div>
+      <div class="provRow">
+        <span class="provLbl">AI:</span>
+        <label><input type="radio" name="pacProvider" id="pp-openai" checked> OpenAI</label>
+        <label><input type="radio" name="pacProvider" id="pp-jev"> Jev</label>
+      </div>
+      <label class="aiToggle"><input type="checkbox" id="pacmanAI"> AI control (separate AI call)</label>
+    </div>
+  </div>
+  <div id="ai">
+    <label for="apiKey">OpenAI key:</label>
+    <input id="apiKey" type="password" placeholder="sk-...">
+    <label for="jevKey">Jev key:</label>
+    <input id="jevKey" type="password" placeholder="tsk-...">
+    <button id="saveKey">Save</button>
+    <button id="healthCheck">Check OpenAI</button>
+    <button id="healthCheckJev">Check Jev</button>
+    <span id="aiStatus"></span>
+  </div>
+  <script src="game.js?v=22"></script>
+</body>
+</html>
