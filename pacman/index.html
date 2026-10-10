@@ -140,14 +140,31 @@
 
   /* ---------- cards ---------- */
   .card {
+    position: relative;
     background: linear-gradient(180deg, var(--panel), var(--panel2));
     border: 1px solid var(--line);
     border-radius: var(--radius);
     padding: 14px 16px;
     backdrop-filter: blur(8px);
     transition: border-color .2s;
+    overflow: hidden;
   }
+  .card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .card.ghostAccent { background: linear-gradient(180deg, rgba(255,75,87,.06), var(--panel2)); border-color: rgba(255,75,87,.22); }
+  .card.ghostAccent::before { background: linear-gradient(90deg, #ff4b57, #ff9ad5, #53e0ff, #ffab4a); }
+  .card.pacAccent { background: linear-gradient(180deg, rgba(255,230,0,.05), var(--panel2)); border-color: rgba(255,230,0,.22); }
+  .card.pacAccent::before { background: linear-gradient(90deg, #ffe600, #ffb300); }
+  .card.keysAccent { background: linear-gradient(180deg, rgba(59,108,255,.07), var(--panel2)); border-color: rgba(59,108,255,.25); }
+  .card.keysAccent::before { background: linear-gradient(90deg, #4a78ff, #53e0ff); }
   .card:hover { border-color: rgba(255,255,255,.16); }
+  .card.ghostAccent:hover { border-color: rgba(255,75,87,.4); }
+  .card.pacAccent:hover { border-color: rgba(255,230,0,.4); }
+  .card.keysAccent:hover { border-color: rgba(59,108,255,.45); }
   .card h3 {
     margin: 0 0 10px;
     font-size: 13px;
@@ -280,7 +297,7 @@
     </div>
 
     <aside class="panel">
-      <div class="card" id="ghostCard">
+      <div class="card ghostAccent" id="ghostCard">
         <h3><span class="emoji">👻</span> Ghosts Brain <span class="mode off" id="ghostMode">HEURISTIC</span></h3>
         <div class="crow"><span class="avatar" style="background:#ff4b57"></span> <span class="name">blinky</span> <span class="arrow" id="ar-blinky">·</span></div>
         <div class="crow"><span class="avatar" style="background:#ff9ad5"></span> <span class="name">pinky</span> <span class="arrow" id="ar-pinky">·</span></div>
@@ -296,7 +313,7 @@
         <label class="aiToggle"><input type="checkbox" id="heuristicOnly" checked> Heuristic ghosts only</label>
       </div>
 
-      <div class="card" id="pacCard">
+      <div class="card pacAccent" id="pacCard">
         <h3><span class="emoji">🟡</span> Jacman Brain <span class="mode off" id="pacMode">PLAYER</span></h3>
         <div id="pacBrain">
           <div class="crow"><span class="avatar" style="background:#ffe600"></span> <span class="name">pacman</span> <span class="arrow" id="ar-pacman">·</span></div>
@@ -311,7 +328,7 @@
         <label class="aiToggle"><input type="checkbox" id="pacmanAI"> AI control (separate AI call)</label>
       </div>
 
-      <div class="card keysPanel">
+      <div class="card keysPanel keysAccent">
         <h3><span class="emoji">🔑</span> API Keys</h3>
         <div class="row">
           <label class="field" for="apiKey">OpenAI</label>
