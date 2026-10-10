@@ -570,7 +570,17 @@ function resetGame(full) {
   gameState = "ready";
   msgEl.textContent = "Press an arrow key to start";
   scoreEl.textContent = score;
+  renderLives();
+}
+
+// Render the stat-bar life dots (plus the hidden numeric fallback).
+function renderLives() {
   livesEl.textContent = lives;
+  const row = document.getElementById("livesRow");
+  if (row)
+    row.innerHTML = "<span class=\"lifeDot\"></span>".repeat(
+      Math.max(0, Math.min(5, lives)),
+    );
 }
 
 // ---------------- Movement helpers ----------------
@@ -1135,7 +1145,7 @@ function updateGhosts() {
         g.progress = 0;
       } else {
         lives--;
-        livesEl.textContent = lives;
+        renderLives();
         if (lives <= 0) {
           gameState = "over";
           msgEl.textContent = "Game over! Press R to restart";

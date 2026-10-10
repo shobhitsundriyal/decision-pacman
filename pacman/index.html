@@ -3,132 +3,340 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pac-Man</title>
+<title>PAC-MAN · AI Arena</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --bg0: #05070d;
+    --bg1: #0a0e1a;
+    --panel: rgba(255,255,255,.045);
+    --panel2: rgba(255,255,255,.025);
+    --line: rgba(255,255,255,.09);
+    --txt: #e8eaf2;
+    --dim: #8b93a7;
+    --yellow: #ffe600;
+    --blue: #3b6cff;
+    --green: #34d17b;
+    --red: #ff5d6c;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
   body {
     margin: 0;
-    background: #000;
+    min-height: 100vh;
+    color: var(--txt);
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    background:
+      radial-gradient(1200px 600px at 70% -10%, rgba(59,108,255,.10), transparent 60%),
+      radial-gradient(900px 500px at 10% 110%, rgba(255,230,0,.05), transparent 60%),
+      linear-gradient(180deg, var(--bg1), var(--bg0));
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    font-family: monospace;
-    color: #fff;
+    padding: 24px 16px 48px;
   }
-  h1 { color: #ffe600; letter-spacing: 4px; margin: 8px 0; }
-  #hud { display: flex; gap: 40px; font-size: 18px; margin-bottom: 6px; align-items: center; }
-  #hud select {
-    background: #111; color: #ffe600; border: 1px solid #444;
-    font-family: monospace; font-size: 15px; padding: 2px 6px;
+
+  /* ---------- header ---------- */
+  header { text-align: center; margin-bottom: 22px; }
+  h1 {
+    font-family: "Press Start 2P", monospace;
+    font-size: 26px;
+    margin: 0;
+    color: var(--yellow);
+    text-shadow: 0 0 24px rgba(255,230,0,.35), 0 0 60px rgba(255,230,0,.15);
+    letter-spacing: 4px;
   }
-  canvas { background: #000; }
-  #msg { font-size: 18px; margin-top: 8px; color: #ffe600; min-height: 24px; }
-  #ai {
-    margin-top: 10px; display: flex; gap: 8px; align-items: center;
+  header p {
+    margin: 10px 0 0;
+    color: var(--dim);
     font-size: 13px;
+    letter-spacing: .4px;
   }
-  #ai input[type=password] {
-    background: #111; color: #fff; border: 1px solid #444;
-    padding: 4px 8px; font-family: monospace; width: 260px;
+
+  /* ---------- layout ---------- */
+  .layout {
+    display: flex;
+    gap: 22px;
+    align-items: flex-start;
+    justify-content: center;
+    flex-wrap: wrap;
+    width: 100%;
+    max-width: 980px;
   }
-  #ai button {
-    background: #2121de; color: #fff; border: 0; padding: 5px 12px;
-    font-family: monospace; cursor: pointer;
+  .gameCol { display: flex; flex-direction: column; gap: 12px; }
+  .panel { display: flex; flex-direction: column; gap: 14px; width: 320px; }
+
+  /* ---------- stat bar ---------- */
+  .statBar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    backdrop-filter: blur(8px);
   }
-  #aiStatus { font-size: 12px; color: #0f0; min-width: 120px; }
-  #aiStatus.err { color: #f55; }
-  #buildInfo { font-size: 11px; color: #666; margin-top: 4px; }
-  #cards { display: flex; gap: 16px; margin-top: 10px; }
+  .stat { display: flex; flex-direction: column; gap: 2px; }
+  .stat .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--dim); }
+  .stat .val { font-size: 20px; font-weight: 700; color: var(--yellow); font-variant-numeric: tabular-nums; }
+  .livesRow { display: flex; gap: 5px; align-items: center; padding-top: 3px; }
+  .lifeDot {
+    width: 13px; height: 13px; border-radius: 50%;
+    background: var(--yellow);
+    box-shadow: 0 0 8px rgba(255,230,0,.5);
+    clip-path: polygon(100% 22%, 44% 50%, 100% 78%, 62% 100%, 0 78%, 0 22%, 62% 0);
+  }
+  .spacer { flex: 1; }
+
+  select, .btn {
+    background: #0d1220;
+    color: var(--txt);
+    border: 1px solid #2a3350;
+    border-radius: 9px;
+    padding: 7px 12px;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s, transform .05s;
+  }
+  select:hover, .btn:hover { border-color: #3d4a75; }
+  select:focus, .btn:focus { outline: none; box-shadow: 0 0 0 3px rgba(59,108,255,.25); }
+  .btn:active { transform: translateY(1px); }
+  .btn.primary {
+    background: linear-gradient(180deg, #4a78ff, #3457e8);
+    border-color: #5b86ff;
+    font-weight: 600;
+  }
+  .btn.primary:hover { box-shadow: 0 4px 18px rgba(59,108,255,.35); }
+
+  #speedCtl { display: flex; align-items: center; gap: 8px; }
+  #speedCtl .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--dim); }
+  #speedSlider { width: 100px; accent-color: var(--yellow); cursor: pointer; }
+  #speedVal { color: var(--yellow); font-weight: 700; font-size: 13px; min-width: 36px; }
+
+  /* ---------- canvas ---------- */
+  .canvasWrap {
+    position: relative;
+    border-radius: 16px;
+    padding: 10px;
+    background: var(--panel2);
+    border: 1px solid var(--line);
+    box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 80px rgba(255,230,0,.05);
+  }
+  canvas {
+    display: block;
+    border-radius: 10px;
+    background: #000;
+  }
+  #msg {
+    position: absolute;
+    inset: auto 0 22px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--yellow);
+    text-shadow: 0 0 12px rgba(255,230,0,.5);
+    pointer-events: none;
+    min-height: 20px;
+  }
+  #buildInfo { font-size: 11px; color: #4a5164; text-align: center; }
+
+  /* ---------- cards ---------- */
   .card {
-    border: 1px solid #333; border-radius: 8px; padding: 8px 14px;
-    min-width: 170px; font-size: 13px;
+    background: linear-gradient(180deg, var(--panel), var(--panel2));
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    backdrop-filter: blur(8px);
+    transition: border-color .2s;
   }
-  .card h3 { margin: 0 0 6px 0; font-size: 14px; color: #fff; }
-  .card .mode {
-    font-size: 10px; padding: 1px 6px; border-radius: 4px;
-    background: #0a5c0a; color: #0f0; margin-left: 6px; vertical-align: middle;
+  .card:hover { border-color: rgba(255,255,255,.16); }
+  .card h3 {
+    margin: 0 0 10px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .3px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
-  .card .mode.off { background: #555; color: #999; }
-  .crow { display: flex; align-items: center; gap: 8px; margin: 4px 0; color: #ccc; }
-  .avatar { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
-  .arrow { font-size: 16px; color: #ffe600; min-width: 18px; text-align: center; }
-  .card.disabled .crow, .card.disabled .arrow { opacity: 0.25; }
-  .card.disabled h3 .mode { background: #333; color: #666; }
-  .aiToggle { display: block; margin-top: 8px; cursor: pointer; user-select: none; color: #ccc; }
-  .aiToggle input { cursor: pointer; }
-  .provRow { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 12px; color: #ccc; }
-  .provRow label { cursor: pointer; user-select: none; }
-  .provRow input[type=radio] { cursor: pointer; accent-color: #ffe600; }
-  .provLbl { color: #888; }
-  #newGameBtn {
-    background: #2121de; color: #fff; border: 0; padding: 4px 14px;
-    font-family: monospace; font-size: 15px; cursor: pointer; border-radius: 4px;
+  .card h3 .emoji { font-size: 16px; }
+  .mode {
+    font-size: 9px; font-weight: 700; letter-spacing: 1px;
+    padding: 3px 8px; border-radius: 99px;
+    background: rgba(52,209,123,.14); color: var(--green);
+    border: 1px solid rgba(52,209,123,.3);
+    margin-left: auto;
   }
-  #newGameBtn:hover { background: #3030f0; }
-  #speedCtl { font-size: 15px; display: flex; align-items: center; gap: 6px; }
-  #speedSlider { width: 110px; accent-color: #ffe600; cursor: pointer; }
-  #speedVal { color: #ffe600; min-width: 34px; }
+  .mode.off { background: rgba(139,147,167,.12); color: var(--dim); border-color: rgba(139,147,167,.25); }
+
+  .crow {
+    display: flex; align-items: center; gap: 10px;
+    margin: 7px 0; color: var(--dim); font-size: 13px;
+    transition: opacity .2s;
+  }
+  .crow .name { min-width: 56px; color: var(--txt); }
+  .avatar {
+    width: 15px; height: 15px; border-radius: 50%;
+    box-shadow: 0 0 10px rgba(255,255,255,.15);
+  }
+  .arrow {
+    font-size: 17px; color: var(--yellow); min-width: 20px; text-align: center;
+    text-shadow: 0 0 10px rgba(255,230,0,.4);
+  }
+  .card.disabled .crow, .card.disabled .arrow { opacity: .22; }
+
+  /* segmented provider control */
+  .provRow { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+  .provLbl { font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--dim); }
+  .seg { position: relative; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg span {
+    display: inline-block; padding: 5px 12px; font-size: 12px; font-weight: 600;
+    color: var(--dim); background: #0d1220; border: 1px solid #2a3350;
+    cursor: pointer; user-select: none; transition: all .15s;
+  }
+  .segRow { display: flex; }
+  .segRow .seg:first-child span { border-radius: 8px 0 0 8px; }
+  .segRow .seg:last-child span { border-radius: 0 8px 8px 0; border-left: 0; }
+  .seg input:checked + span {
+    color: #fff;
+    background: linear-gradient(180deg, #4a78ff, #3457e8);
+    border-color: #5b86ff;
+    box-shadow: 0 2px 10px rgba(59,108,255,.35);
+  }
+  .seg input:disabled + span { opacity: .35; cursor: not-allowed; }
+
+  .aiToggle {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 12px; cursor: pointer; user-select: none;
+    font-size: 13px; color: var(--txt);
+  }
+  .aiToggle input { width: 15px; height: 15px; accent-color: var(--yellow); cursor: pointer; }
+
+  /* ---------- keys panel ---------- */
+  .keysPanel .row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .keysPanel label.field { font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--dim); min-width: 62px; }
+  input[type=password] {
+    flex: 1; min-width: 140px;
+    background: #0d1220; color: var(--txt);
+    border: 1px solid #2a3350; border-radius: 9px;
+    padding: 8px 10px; font-family: inherit; font-size: 13px;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  input[type=password]:focus { outline: none; border-color: #4a78ff; box-shadow: 0 0 0 3px rgba(59,108,255,.2); }
+  .checksRow { display: flex; gap: 8px; flex-wrap: wrap; }
+  #aiStatus {
+    margin-top: 10px; font-size: 12px; color: var(--green);
+    min-height: 16px; word-break: break-word;
+  }
+  #aiStatus.err { color: var(--red); }
+
+  @media (max-width: 820px) {
+    .panel { width: 100%; max-width: 480px; }
+    .layout { flex-direction: column; align-items: center; }
+  }
 </style>
 </head>
 <body>
-  <h1>PAC-MAN</h1>
-  <div id="hud">
-    <span>Score: <span id="score">0</span></span>
-    <span>Lives: <span id="lives">3</span></span>
-    <label>Maze:
-      <select id="mazeSelect">
-        <option value="classic" selected>Classic</option>
-        <option value="plaza">Plaza</option>
-        <option value="labyrinth">Labyrinth</option>
-      </select>
-    </label>
-    <button id="newGameBtn">New Game</button>
-    <label id="speedCtl">Speed:
-      <input type="range" id="speedSlider" min="0.25" max="2" step="0.25" value="1">
-      <span id="speedVal">1x</span>
-    </label>
-  </div>
-  <canvas id="game" width="448" height="496"></canvas>
-  <div id="msg">Press an arrow key to start</div>
-  <div id="buildInfo"></div>
-  <div id="cards">
-    <div class="card" id="ghostCard">
-      <h3>👻 Ghosts Brain <span class="mode off" id="ghostMode">HEURISTIC</span></h3>
-      <div class="crow"><span class="avatar" style="background:#ff0000"></span> blinky <span class="arrow" id="ar-blinky">·</span></div>
-      <div class="crow"><span class="avatar" style="background:#ffc0cb"></span> pinky&nbsp; <span class="arrow" id="ar-pinky">·</span></div>
-      <div class="crow"><span class="avatar" style="background:#00ffff"></span> inky&nbsp;&nbsp; <span class="arrow" id="ar-inky">·</span></div>
-      <div class="crow"><span class="avatar" style="background:#ffa500"></span> clyde&nbsp;<span class="arrow" id="ar-clyde">·</span></div>
-      <div class="provRow">
-        <span class="provLbl">AI:</span>
-        <label><input type="radio" name="ghostProvider" id="gp-openai" checked> OpenAI</label>
-        <label><input type="radio" name="ghostProvider" id="gp-jev"> Jev</label>
+  <header>
+    <h1>PAC-MAN</h1>
+    <p>AI arena — heuristic vs decisions-API brains, per character</p>
+  </header>
+
+  <div class="layout">
+    <div class="gameCol">
+      <div class="statBar">
+        <div class="stat">
+          <span class="lbl">Score</span>
+          <span class="val" id="score">0</span>
+        </div>
+        <div class="stat">
+          <span class="lbl">Lives</span>
+          <div class="livesRow" id="livesRow">
+            <span class="lifeDot"></span><span class="lifeDot"></span><span class="lifeDot"></span>
+          </div>
+        </div>
+        <span id="lives" style="display:none">3</span>
+        <div class="stat">
+          <span class="lbl">Maze</span>
+          <select id="mazeSelect">
+            <option value="classic" selected>Classic</option>
+            <option value="plaza">Plaza</option>
+            <option value="labyrinth">Labyrinth</option>
+          </select>
+        </div>
+        <div class="spacer"></div>
+        <label id="speedCtl">
+          <span class="lbl">Speed</span>
+          <input type="range" id="speedSlider" min="0.25" max="2" step="0.25" value="1">
+          <span id="speedVal">1x</span>
+        </label>
+        <button id="newGameBtn" class="btn primary">New Game</button>
       </div>
-      <label class="aiToggle"><input type="checkbox" id="heuristicOnly" checked> Heuristic ghosts only</label>
+
+      <div class="canvasWrap">
+        <canvas id="game" width="448" height="496"></canvas>
+        <div id="msg">Press an arrow key to start</div>
+      </div>
+      <div id="buildInfo"></div>
     </div>
-    <div class="card" id="pacCard">
-      <h3>🟡 Jacman Brain <span class="mode" id="pacMode">PLAYER</span></h3>
-      <div id="pacBrain">
-        <div class="crow"><span class="avatar" style="background:#ffe600"></span> pacman <span class="arrow" id="ar-pacman">·</span></div>
+
+    <aside class="panel">
+      <div class="card" id="ghostCard">
+        <h3><span class="emoji">👻</span> Ghosts Brain <span class="mode off" id="ghostMode">HEURISTIC</span></h3>
+        <div class="crow"><span class="avatar" style="background:#ff4b57"></span> <span class="name">blinky</span> <span class="arrow" id="ar-blinky">·</span></div>
+        <div class="crow"><span class="avatar" style="background:#ff9ad5"></span> <span class="name">pinky</span> <span class="arrow" id="ar-pinky">·</span></div>
+        <div class="crow"><span class="avatar" style="background:#53e0ff"></span> <span class="name">inky</span> <span class="arrow" id="ar-inky">·</span></div>
+        <div class="crow"><span class="avatar" style="background:#ffab4a"></span> <span class="name">clyde</span> <span class="arrow" id="ar-clyde">·</span></div>
+        <div class="provRow">
+          <span class="provLbl">AI</span>
+          <div class="segRow">
+            <label class="seg"><input type="radio" name="ghostProvider" id="gp-openai" checked><span>OpenAI</span></label>
+            <label class="seg"><input type="radio" name="ghostProvider" id="gp-jev"><span>Jev</span></label>
+          </div>
+        </div>
+        <label class="aiToggle"><input type="checkbox" id="heuristicOnly" checked> Heuristic ghosts only</label>
       </div>
-      <div class="provRow">
-        <span class="provLbl">AI:</span>
-        <label><input type="radio" name="pacProvider" id="pp-openai" checked> OpenAI</label>
-        <label><input type="radio" name="pacProvider" id="pp-jev"> Jev</label>
+
+      <div class="card" id="pacCard">
+        <h3><span class="emoji">🟡</span> Jacman Brain <span class="mode off" id="pacMode">PLAYER</span></h3>
+        <div id="pacBrain">
+          <div class="crow"><span class="avatar" style="background:#ffe600"></span> <span class="name">pacman</span> <span class="arrow" id="ar-pacman">·</span></div>
+        </div>
+        <div class="provRow">
+          <span class="provLbl">AI</span>
+          <div class="segRow">
+            <label class="seg"><input type="radio" name="pacProvider" id="pp-openai" checked><span>OpenAI</span></label>
+            <label class="seg"><input type="radio" name="pacProvider" id="pp-jev"><span>Jev</span></label>
+          </div>
+        </div>
+        <label class="aiToggle"><input type="checkbox" id="pacmanAI"> AI control (separate AI call)</label>
       </div>
-      <label class="aiToggle"><input type="checkbox" id="pacmanAI"> AI control (separate AI call)</label>
-    </div>
+
+      <div class="card keysPanel">
+        <h3><span class="emoji">🔑</span> API Keys</h3>
+        <div class="row">
+          <label class="field" for="apiKey">OpenAI</label>
+          <input id="apiKey" type="password" placeholder="sk-...">
+        </div>
+        <div class="row">
+          <label class="field" for="jevKey">Jev</label>
+          <input id="jevKey" type="password" placeholder="tsk-...">
+        </div>
+        <div class="checksRow">
+          <button id="saveKey" class="btn primary">Save keys</button>
+          <button id="healthCheck" class="btn">Check OpenAI</button>
+          <button id="healthCheckJev" class="btn">Check Jev</button>
+        </div>
+        <div id="aiStatus"></div>
+      </div>
+    </aside>
   </div>
-  <div id="ai">
-    <label for="apiKey">OpenAI key:</label>
-    <input id="apiKey" type="password" placeholder="sk-...">
-    <label for="jevKey">Jev key:</label>
-    <input id="jevKey" type="password" placeholder="tsk-...">
-    <button id="saveKey">Save</button>
-    <button id="healthCheck">Check OpenAI</button>
-    <button id="healthCheckJev">Check Jev</button>
-    <span id="aiStatus"></span>
-  </div>
-  <script src="game.js?v=22"></script>
+
+  <script src="game.js?v=23"></script>
 </body>
 </html>
