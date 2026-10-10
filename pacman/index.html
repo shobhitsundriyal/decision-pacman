@@ -119,8 +119,6 @@
 
   /* ---------- canvas ---------- */
   .canvasWrap {
-    position: relative;
-    border-radius: 16px;
     padding: 10px;
     background: var(--panel2);
     border: 1px solid var(--line);
@@ -128,18 +126,14 @@
   }
   canvas {
     display: block;
-    border-radius: 10px;
     background: #000;
   }
   #msg {
-    position: absolute;
-    inset: auto 0 22px;
     text-align: center;
     font-size: 15px;
     font-weight: 600;
     color: var(--yellow);
     text-shadow: 0 0 12px rgba(255,230,0,.5);
-    pointer-events: none;
     min-height: 20px;
   }
   #buildInfo { font-size: 11px; color: #4a5164; text-align: center; }
@@ -280,8 +274,8 @@
 
       <div class="canvasWrap">
         <canvas id="game" width="448" height="496"></canvas>
-        <div id="msg">Press an arrow key to start</div>
       </div>
+      <div id="msg">Press an arrow key to start</div>
       <div id="buildInfo"></div>
     </div>
 
