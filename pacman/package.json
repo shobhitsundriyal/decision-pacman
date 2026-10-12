@@ -1,0 +1,14 @@
+{
+  "name": "decision-pacman",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pac-Man where ghosts and Pac-Man can each be driven by an LLM decisions API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test-headless.js && node test-parser.js && node test-pacman-ai.js && node test-report-mode.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
