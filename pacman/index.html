@@ -250,6 +250,54 @@
     .panel { width: 100%; max-width: 480px; }
     .layout { flex-direction: column; align-items: center; }
   }
+
+  /* ---------- test report accordion ---------- */
+  .accordion {
+    width: 100%;
+    max-width: 980px;
+    margin-top: 22px;
+    background: linear-gradient(180deg, var(--panel), var(--panel2));
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    backdrop-filter: blur(8px);
+  }
+  .accordion > summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 14px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    user-select: none;
+  }
+  .accordion > summary::-webkit-details-marker { display: none; }
+  .accordion > summary::after {
+    content: "▾";
+    margin-left: auto;
+    color: var(--dim);
+    transition: transform .2s;
+  }
+  .accordion:not([open]) > summary::after { transform: rotate(-90deg); }
+  #testLive { font-size: 12px; color: var(--yellow); font-weight: 600; }
+  .testBody { padding: 0 18px 16px; }
+  .testControls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  #testHint { font-size: 12px; color: var(--dim); }
+  #testHint.err { color: var(--red); }
+  .noRuns { font-size: 13px; color: var(--dim); padding: 8px 0; }
+  .reportTable { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .reportTable th {
+    text-align: left; color: var(--dim); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 1px;
+    padding: 8px 10px; border-bottom: 1px solid var(--line);
+  }
+  .reportTable td { padding: 9px 10px; border-bottom: 1px solid rgba(255,255,255,.05); vertical-align: top; }
+  .reportTable tr:last-child td { border-bottom: 0; }
+  .win { color: var(--green); font-weight: 700; }
+  .lose { color: var(--red); font-weight: 700; }
+  .tie { color: var(--yellow); font-weight: 700; }
+  .mono { font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
@@ -348,6 +396,17 @@
     </aside>
   </div>
 
-  <script src="game.js?v=23"></script>
+  <details id="testReport" class="accordion" open>
+    <summary>📊 Test Report <span id="testLive"></span></summary>
+    <div class="testBody">
+      <div class="testControls">
+        <button id="runTestBtn" class="btn primary">▶ Run 2-min Test</button>
+        <span id="testHint">Runs the game with the current brain selections for max 2 minutes. Requires Pac-Man AI control ON.</span>
+      </div>
+      <div id="testTable"><div class="noRuns">No test runs this session yet.</div></div>
+    </div>
+  </details>
+
+  <script src="game.js?v=24"></script>
 </body>
 </html>

@@ -60,14 +60,205 @@ function updateBrainCards() {
   pacBrainEl.classList.toggle("disabled", !pacAI);
   pacModeEl.textContent = pacAI ? "AI · " + cardProvider("pp").toUpperCase() : "PLAYER";
   pacModeEl.classList.toggle("off", !pacAI);
-  // Provider radios: locked when the brain in question isn't AI-driven.
+  // Provider radios: locked when the brain in question isn't AI-driven,
+  // or while a test run is in progress.
   const gpO = document.getElementById("gp-openai"),
     gpJ = document.getElementById("gp-jev"),
     ppO = document.getElementById("pp-openai"),
     ppJ = document.getElementById("pp-jev");
-  if (gpO) gpO.disabled = gpJ.disabled = ghostHeur;
-  if (ppO) ppO.disabled = ppJ.disabled = !pacAI;
+  if (testActive) {
+    heuristicOnlyEl.disabled = true;
+    pacmanAIEl.disabled = true;
+    if (gpO) gpO.disabled = gpJ.disabled = true;
+    if (ppO) ppO.disabled = ppJ.disabled = true;
+  } else {
+    heuristicOnlyEl.disabled = false;
+    pacmanAIEl.disabled = false;
+    if (gpO) gpO.disabled = gpJ.disabled = ghostHeur;
+    if (ppO) ppO.disabled = ppJ.disabled = !pacAI;
+  }
 }
+
+// ---------------- Test mode (2-min report) ----------------
+// Runs the game with the current brain selections for up to 2 minutes,
+// measures scores + API latency, and stores reports in sessionStorage.
+const TEST_LIMIT_MS = 2 * 60 * 1000;
+const runTestBtn = document.getElementById("runTestBtn");
+const testHintEl = document.getElementById("testHint");
+const testLiveEl = document.getElementById("testLive");
+const testTableEl = document.getElementById("testTable");
+let testActive = false;
+let testStart = 0;
+let testCatches = 0;
+let testMetrics = {}; // provider -> { calls, fails, totalMs }
+
+function loadTestReports() {
+  try {
+    return JSON.parse(sessionStorage.getItem("pacman_test_reports") || "[]");
+  } catch (e) {
+    return [];
+  }
+}
+function saveTestReports(reports) {
+  try {
+    sessionStorage.setItem("pacman_test_reports", JSON.stringify(reports));
+  } catch (e) {
+    /* ignore */
+  }
+}
+function recordLatency(provider, ms, ok) {
+  if (!testActive) return;
+  const m = (testMetrics[provider] = testMetrics[provider] || {
+    calls: 0,
+    fails: 0,
+    totalMs: 0,
+  });
+  m.calls++;
+  if (!ok) m.fails++;
+  m.totalMs += ms;
+}
+
+function fmtDuration(ms) {
+  const s = Math.round(ms / 1000);
+  return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+}
+
+function renderTestReports() {
+  const reports = loadTestReports();
+  if (!reports.length) {
+    testTableEl.innerHTML = '<div class="noRuns">No test runs this session yet.</div>';
+    return;
+  }
+  const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  const rows = reports
+    .slice()
+    .reverse()
+    .map(
+      (r) => `<tr>
+        <td>${esc(r.time)}</td>
+        <td>👻 ${esc(r.ghostBrain)}<br>🟡 ${esc(r.pacBrain)}</td>
+        <td>${esc(r.maze)}</td>
+        <td class="mono">${fmtDuration(r.durationMs)}</td>
+        <td class="mono">${r.pacScore}</td>
+        <td class="mono">${r.ghostScore}<br><small>${r.catches} catch${r.catches === 1 ? "" : "es"}</small></td>
+        <td class="mono">${
+          r.latency && Object.keys(r.latency).length
+            ? Object.entries(r.latency)
+                .map(
+                  ([prov, l]) =>
+                    `${esc(prov)}: ${l.calls ? Math.round(l.totalMs / l.calls) : 0}ms avg<br><small>${l.calls - l.fails}/${l.calls} ok</small>`,
+                )
+                .join("<br>")
+            : '<small>no API calls</small>'
+        }</td>
+        <td class="${r.result === "PACMAN" ? "win" : r.result === "GHOSTS" ? "lose" : "tie"}">${esc(r.result)}</td>
+      </tr>`,
+    )
+    .join("");
+  testTableEl.innerHTML =
+    '<table class="reportTable"><thead><tr>' +
+    "<th>Time</th><th>Matchup</th><th>Maze</th><th>Duration</th><th>Pac score</th><th>Ghost score</th><th>API latency</th><th>Result</th>" +
+    "</tr></thead><tbody>" +
+    rows +
+    "</tbody></table>";
+}
+
+function startTest() {
+  if (testActive) {
+    endTest("stopped");
+    return;
+  }
+  if (!pacmanAIEl.checked) {
+    testHintEl.textContent = "✗ Enable Pac-Man AI control (Jacman Brain card) before running a test.";
+    testHintEl.className = "err";
+    return;
+  }
+  testHintEl.className = "";
+  testHintEl.textContent = "Test running — brain settings are locked. Click Stop to end early.";
+  testActive = true;
+  testStart = Date.now();
+  testCatches = 0;
+  testMetrics = {};
+  // fresh game, auto-started
+  started = false;
+  paused = false;
+  resetGame(true);
+  started = true;
+  gameState = "playing";
+  msgEl.textContent = "";
+  runTestBtn.textContent = "■ Stop Test";
+  updateBrainCards(); // lock brain settings immediately
+}
+
+function endTest(reason) {
+  if (!testActive) return;
+  testActive = false;
+  const durationMs = Date.now() - testStart;
+  const ghostBrain = heuristicOnlyEl.checked ? "heuristic" : cardProvider("gp");
+  const pacBrain = pacmanAIEl.checked ? cardProvider("pp") : "player";
+  const pacScore = score;
+  const ghostScore = testCatches * 200;
+  let result;
+  if (reason === "pacman" || gameState === "won") result = "PACMAN";
+  else if (reason === "ghosts" || gameState === "over") result = "GHOSTS";
+  else if (reason === "stopped") result = "STOPPED";
+  else result = pacScore > ghostScore ? "PACMAN" : pacScore < ghostScore ? "GHOSTS" : "TIE";
+
+  const report = {
+    time: new Date().toLocaleTimeString(),
+    ghostBrain,
+    pacBrain,
+    maze: mazeSelect.value,
+    durationMs,
+    pacScore,
+    ghostScore,
+    catches: testCatches,
+    latency: testMetrics,
+    result,
+  };
+  const reports = loadTestReports();
+  reports.push(report);
+  saveTestReports(reports);
+  renderTestReports();
+
+  runTestBtn.textContent = "▶ Run 2-min Test";
+  testHintEl.className = "";
+  testHintEl.textContent = "Runs the game with the current brain selections for max 2 minutes. Requires Pac-Man AI control ON.";
+  testLiveEl.textContent = "";
+  // stop and reset the board, unlock controls
+  started = false;
+  paused = false;
+  resetGame(true);
+  updateBrainCards();
+}
+
+function testTick() {
+  if (!testActive) return;
+  const elapsed = Date.now() - testStart;
+  if (elapsed >= TEST_LIMIT_MS) {
+    endTest("timeout");
+    return;
+  }
+  if (gameState === "over") {
+    endTest("ghosts");
+    return;
+  }
+  if (gameState === "won") {
+    endTest("pacman");
+    return;
+  }
+  testLiveEl.textContent =
+    "TEST " +
+    fmtDuration(elapsed) +
+    " / 2:00 · pac " +
+    score +
+    " · ghosts " +
+    testCatches * 200 +
+    " (" + testCatches + ")";
+}
+
+runTestBtn.addEventListener("click", startTest);
+renderTestReports();
 
 // # = wall, . = pellet, o = power pellet, ' ' = empty, '-' = ghost door
 const MAZES = {
@@ -889,10 +1080,13 @@ async function requestGhostDecisions() {
   decisionInFlight = true;
   apiCallCount++;
   setAIStatus("ghosts AI [" + provider + "] thinking #" + apiCallCount + "...");
+  let t0 = performance.now();
   try {
     const state = buildGameStatePayload();
     const payload = buildDecisionsPayload(state);
+    t0 = performance.now();
     const data = await callDecisions(provider, payload.input, payload.questions);
+    recordLatency(provider, performance.now() - t0, true);
     const parsed = extractDecisions(data);
     let applied = 0;
     for (const g of ghosts) {
@@ -908,6 +1102,7 @@ async function requestGhostDecisions() {
     if (applied === 0)
       console.warn("[pacman] unexpected decisions response shape:", data);
   } catch (err) {
+    recordLatency(provider, performance.now() - t0, false);
     apiHealthy = false;
     setAIStatus("ghosts AI failed: " + err.message + " — coast & stop", true);
   } finally {
@@ -988,9 +1183,12 @@ async function requestPacmanDecision() {
     return;
   }
   pacmanDecisionInFlight = true;
+  let t0 = performance.now();
   try {
     const payload = buildPacmanDecisionBody();
+    t0 = performance.now();
     const data = await callDecisions(provider, payload.input, payload.questions);
+    recordLatency(provider, performance.now() - t0, true);
     const parsed = extractDecisions(data);
     const dir = parsed.pacman;
     setArrow("pacman", dir); // brain card: AI's proposal
@@ -1002,6 +1200,7 @@ async function requestPacmanDecision() {
       pacman.next = dir; // applied at the next legal tile center
     }
   } catch (err) {
+    recordLatency(provider, performance.now() - t0, false);
     setAIStatus(
       "pacman AI [" + provider + "] failed: " + err.message + " — coasting",
       true,
@@ -1145,6 +1344,7 @@ function updateGhosts() {
         g.progress = 0;
       } else {
         lives--;
+        if (testActive) testCatches++;
         renderLives();
         if (lives <= 0) {
           gameState = "over";
@@ -1274,6 +1474,7 @@ function togglePause() {
 
 function loop() {
   updateMazeSelectEnabled(); // re-evaluate as game state changes
+  testTick(); // test-mode watchdog (2-min limit, live stats)
   updateBrainCards(); // grey/un-grey brain cards per control mode
   if (started && !paused && gameState !== "over" && gameState !== "won") {
     if (gameState === "ready") {
@@ -1316,6 +1517,7 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     togglePause();
   } else if (e.key === "r" || e.key === "R") {
+    if (testActive) return; // no manual resets during a test run
     started = false;
     paused = false;
     resetGame(true);

@@ -16,6 +16,8 @@ global.document = {
   addEventListener: () => {},
   currentScript: { src: "?" },
 };
+const __ss = {};
+global.sessionStorage = { getItem: k => __ss[k] ?? null, setItem: (k,v) => { __ss[k]=String(v); }, removeItem: k => { delete __ss[k]; } };
 global.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
 global.requestAnimationFrame = () => {};
 global.performance = { now: () => 0 };

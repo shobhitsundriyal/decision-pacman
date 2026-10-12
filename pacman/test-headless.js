@@ -29,6 +29,8 @@ global.document = {
   addEventListener: (ev, fn) => { (listeners[ev] = listeners[ev] || []).push(fn); },
 };
 const store = {};
+const __ss = {};
+global.sessionStorage = { getItem: k => __ss[k] ?? null, setItem: (k,v) => { __ss[k]=String(v); }, removeItem: k => { delete __ss[k]; } };
 global.localStorage = {
   getItem: (k) => store[k] ?? null,
   setItem: (k, v) => { store[k] = String(v); },
