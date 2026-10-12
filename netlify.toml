@@ -1,5 +1,8 @@
+# Netlify config at repo ROOT so the project auto-detects with default
+# settings (no base directory needed in the Netlify UI).
 [build]
-  publish = "."
+  publish = "pacman"
+  functions = "pacman/netlify/functions"
 
 # route /api/jev to the Netlify function (served at /.netlify/functions/jev)
 [[redirects]]
